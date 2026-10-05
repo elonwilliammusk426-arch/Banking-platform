@@ -1,0 +1,876 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  VAULT
+}
+
+enum AccountStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  CARD_PAYMENT
+  FEE
+  REFUND
+  INTEREST
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum TransferStatus {
+  CREATED
+  PROCESSING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum AuditOutcome {
+  SUCCESS
+  DENIED
+  FAILURE
+}
+
+enum Role {
+  CUSTOMER
+  SUPPORT
+  KYC_REVIEWER
+  RISK_ANALYST
+  OPERATIONS
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum VerificationChannel {
+  EMAIL
+  PHONE
+}
+
+enum KycStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum KycLevel {
+  BASIC
+  STANDARD
+  ENHANCED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  PROHIBITED
+}
+
+enum IdentifierType {
+  ACCOUNT_NUMBER
+  ROUTING_NUMBER
+  IBAN
+  SWIFT_BIC
+  SORT_CODE
+}
+
+enum LimitPeriod {
+  PER_TRANSACTION
+  DAILY
+  MONTHLY
+}
+
+enum HoldStatus {
+  ACTIVE
+  RELEASED
+  CAPTURED
+  EXPIRED
+}
+
+enum BeneficiaryStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  DISABLED
+}
+
+enum TransferType {
+  INTERNAL
+  ACH
+  WIRE
+}
+
+enum ScheduleFrequency {
+  ONCE
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum MovementDirection {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum MovementMethod {
+  BANK_TRANSFER
+  ACH
+  WIRE
+  CARD
+  CASH
+}
+
+enum CardType {
+  VIRTUAL
+  PHYSICAL
+}
+
+enum CardStatus {
+  CREATED
+  PENDING_ACTIVATION
+  ACTIVE
+  FROZEN
+  EXPIRED
+  REPLACED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RiskAlertStatus {
+  OPEN
+  INVESTIGATING
+  CLEARED
+  ESCALATED
+  BLOCKED
+}
+
+enum StatementStatus {
+  GENERATING
+  READY
+  FAILED
+}
+
+model User {
+  id                    String         @id @default(uuid()) @db.Uuid
+  email                 String         @unique
+  passwordHash          String
+  firstName             String
+  lastName              String
+  phone                  String?         @unique
+  status                 UserStatus     @default(PENDING_VERIFICATION)
+  emailVerifiedAt       DateTime?
+  phoneVerifiedAt       DateTime?
+  preferredLanguage     String         @default("en")
+  timezone              String         @default("UTC")
+  mfaEnabled            Boolean        @default(false)
+  mfaSecretEncrypted    String?
+  mfaSecretIv           String?
+  mfaSecretAuthTag      String?
+  failedLoginAttempts   Int            @default(0)
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  sessions              Session[]
+  devices               Device[]
+  loginEvents           LoginEvent[]
+  recoveryCodes         RecoveryCode[]
+  roles                 UserRole[]
+  verificationCodes     VerificationCode[]
+  kycProfile            KycProfile?    @relation("KycOwner")
+  reviewedKycProfiles   KycProfile[]   @relation("KycReviewer")
+  accounts              Account[]
+  beneficiaries         Beneficiary[]
+  initiatedTransfers    Transfer[]      @relation("TransferInitiator")
+  approvedTransfers     Transfer[]      @relation("TransferApprover")
+  scheduledTransfers    ScheduledTransfer[]
+  moneyMovements        MoneyMovement[]
+  cards                 Card[]
+  notifications         Notification[]
+  supportTickets        SupportTicket[] @relation("TicketCustomer")
+  assignedTickets       SupportTicket[] @relation("TicketAssignee")
+  supportMessages       SupportMessage[]
+  riskAlerts            RiskAlert[]    @relation("AlertCustomer")
+  assignedRiskAlerts    RiskAlert[]    @relation("AlertAssignee")
+  auditLogs             AuditLog[]
+  files                 FileObject[]
+
+  @@index([status])
+}
+
+model Session {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  deviceId              String?   @db.Uuid
+  familyId              String    @db.Uuid
+  refreshTokenHash      String
+  csrfTokenHash         String
+  userAgent             String?
+  ipAddress             String?
+  rotationCounter       Int       @default(0)
+  lastUsedAt            DateTime  @default(now())
+  expiresAt             DateTime
+  revokedAt             DateTime?
+  revokeReason          String?
+  createdAt             DateTime  @default(now())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device                Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, revokedAt])
+  @@index([deviceId])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model Device {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  fingerprintHash       String
+  displayName           String
+  platform              String?
+  browser               String?
+  lastIpAddress         String?
+  lastSeenAt            DateTime  @default(now())
+  trustedAt             DateTime?
+  revokedAt             DateTime?
+  createdAt             DateTime  @default(now())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions              Session[]
+
+  @@unique([userId, fingerprintHash])
+  @@index([userId, lastSeenAt(sort: Desc)])
+}
+
+model LoginEvent {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String?   @db.Uuid
+  emailHash             String
+  successful            Boolean
+  suspicious            Boolean  @default(false)
+  riskScore             Int      @default(0)
+  reason                String?
+  ipAddress             String?
+  userAgent             String?
+  countryCode           String?  @db.Char(2)
+  createdAt             DateTime @default(now())
+  user                  User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([suspicious, createdAt(sort: Desc)])
+}
+
+model UserRole {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  role                  Role      @default(CUSTOMER)
+  createdAt             DateTime  @default(now())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model VerificationCode {
+  id                    String              @id @default(uuid()) @db.Uuid
+  userId                String              @db.Uuid
+  channel               VerificationChannel
+  destinationHash       String
+  codeHash              String
+  attempts              Int                 @default(0)
+  expiresAt             DateTime
+  consumedAt            DateTime?
+  createdAt             DateTime            @default(now())
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channel, consumedAt])
+  @@index([expiresAt])
+}
+
+model RecoveryCode {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  codeHash              String
+  usedAt                DateTime?
+  createdAt             DateTime  @default(now())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+}
+
+model KycProfile {
+  id                    String      @id @default(uuid()) @db.Uuid
+  userId                String      @unique @db.Uuid
+  status                KycStatus   @default(NOT_STARTED)
+  level                 KycLevel    @default(BASIC)
+  riskLevel             RiskLevel   @default(LOW)
+  encryptedPayload      String?
+  providerReference     String?
+  rejectionReason       String?
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  reviewedById          String?     @db.Uuid
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  user                  User        @relation("KycOwner", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy            User?       @relation("KycReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  documents             KycDocument[]
+
+  @@index([status, submittedAt])
+  @@index([riskLevel])
+}
+
+model KycDocument {
+  id                    String      @id @default(uuid()) @db.Uuid
+  kycProfileId          String      @db.Uuid
+  fileObjectId          String      @db.Uuid
+  documentType          String
+  countryCode           String      @db.Char(2)
+  verifiedAt            DateTime?
+  createdAt             DateTime    @default(now())
+  kycProfile            KycProfile  @relation(fields: [kycProfileId], references: [id], onDelete: Cascade)
+  fileObject            FileObject  @relation("KycDocumentFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@index([kycProfileId])
+}
+
+model Account {
+  id                    String        @id @default(uuid()) @db.Uuid
+  userId                String        @db.Uuid
+  name                  String
+  type                  AccountType
+  status                AccountStatus @default(ACTIVE)
+  currency              String        @default("USD") @db.Char(3)
+  accountNumberLast4    String        @db.Char(4)
+  balance               Decimal       @default(0) @db.Decimal(20, 2)
+  availableBalance      Decimal       @default(0) @db.Decimal(20, 2)
+  version               Int           @default(0)
+  openedAt              DateTime      @default(now())
+  closedAt              DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  transactions          Transaction[]
+  outgoingTransfers     Transfer[]    @relation("OutgoingTransfer")
+  incomingTransfers     Transfer[]    @relation("IncomingTransfer")
+  ledgerEntries         LedgerEntry[]
+  identifiers           AccountIdentifier[]
+  limits                TransactionLimit[]
+  holds                 AccountHold[]
+  statements            Statement[]
+  cards                 Card[]
+  scheduledTransfers    ScheduledTransfer[]
+  moneyMovements        MoneyMovement[]
+
+  @@index([userId, status])
+  @@index([currency])
+}
+
+model AccountIdentifier {
+  id                    String         @id @default(uuid()) @db.Uuid
+  accountId             String         @db.Uuid
+  type                  IdentifierType
+  encryptedValue        String
+  last4                 String?
+  countryCode           String?        @db.Char(2)
+  createdAt             DateTime       @default(now())
+  account               Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, type])
+}
+
+model TransactionLimit {
+  id                    String         @id @default(uuid()) @db.Uuid
+  accountId             String         @db.Uuid
+  transferType          TransferType?
+  period                LimitPeriod
+  amount                Decimal        @db.Decimal(20, 2)
+  currency              String         @default("USD") @db.Char(3)
+  active                Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  account               Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, transferType, period, currency])
+}
+
+model AccountHold {
+  id                    String         @id @default(uuid()) @db.Uuid
+  accountId             String         @db.Uuid
+  amount                Decimal        @db.Decimal(20, 2)
+  currency              String         @default("USD") @db.Char(3)
+  reason                String
+  status                HoldStatus     @default(ACTIVE)
+  expiresAt             DateTime?
+  releasedAt            DateTime?
+  createdAt             DateTime       @default(now())
+  account               Account        @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, status])
+  @@index([expiresAt])
+}
+
+model Statement {
+  id                    String          @id @default(uuid()) @db.Uuid
+  accountId             String          @db.Uuid
+  periodStart           DateTime
+  periodEnd             DateTime
+  openingBalance        Decimal         @db.Decimal(20, 2)
+  closingBalance        Decimal         @db.Decimal(20, 2)
+  status                StatementStatus @default(GENERATING)
+  fileObjectId          String?         @db.Uuid
+  createdAt             DateTime        @default(now())
+  account               Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  fileObject            FileObject?     @relation("StatementFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@unique([accountId, periodStart, periodEnd])
+  @@index([accountId, periodEnd(sort: Desc)])
+}
+
+model Transaction {
+  id                    String            @id @default(uuid()) @db.Uuid
+  accountId             String            @db.Uuid
+  type                  TransactionType
+  status                TransactionStatus @default(PENDING)
+  amount                Decimal           @db.Decimal(20, 2)
+  currency              String            @default("USD") @db.Char(3)
+  description           String
+  merchantName          String?
+  category              String?
+  externalReference     String?
+  metadata              Json?
+  postedAt              DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  account               Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+model Beneficiary {
+  id                    String            @id @default(uuid()) @db.Uuid
+  userId                String            @db.Uuid
+  nickname              String
+  legalName             String
+  status                BeneficiaryStatus @default(PENDING_VERIFICATION)
+  transferType          TransferType
+  currency              String            @default("USD") @db.Char(3)
+  internalAccountId     String?           @db.Uuid
+  encryptedBankDetails  String?
+  bankName              String?
+  countryCode           String?           @db.Char(2)
+  verifiedAt            DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transfers             Transfer[]
+  schedules             ScheduledTransfer[]
+
+  @@index([userId, status])
+  @@index([internalAccountId])
+}
+
+model Transfer {
+  id                    String         @id @default(uuid()) @db.Uuid
+  idempotencyKey        String         @unique
+  fromAccountId         String         @db.Uuid
+  toAccountId           String?        @db.Uuid
+  beneficiaryId         String?        @db.Uuid
+  transferType          TransferType   @default(INTERNAL)
+  externalRecipientName String?
+  amount                Decimal        @db.Decimal(20, 2)
+  currency              String         @default("USD") @db.Char(3)
+  feeAmount             Decimal        @default(0) @db.Decimal(20, 2)
+  status                TransferStatus @default(CREATED)
+  providerReference     String?
+  scheduledFor          DateTime?
+  riskScore             Int            @default(0)
+  approvedById          String?         @db.Uuid
+  approvedAt            DateTime?
+  note                  String?
+  failureReason         String?
+  initiatedBy           String         @db.Uuid
+  processedAt           DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  fromAccount           Account        @relation("OutgoingTransfer", fields: [fromAccountId], references: [id], onDelete: Restrict)
+  toAccount             Account?       @relation("IncomingTransfer", fields: [toAccountId], references: [id], onDelete: Restrict)
+  beneficiary           Beneficiary?   @relation(fields: [beneficiaryId], references: [id], onDelete: Restrict)
+  initiator             User           @relation("TransferInitiator", fields: [initiatedBy], references: [id], onDelete: Restrict)
+  approvedBy            User?          @relation("TransferApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  ledgerEntries         LedgerEntry[]
+  events                TransferEvent[]
+  receipt               TransactionReceipt?
+  riskAlerts            RiskAlert[]
+
+  @@index([fromAccountId, createdAt(sort: Desc)])
+  @@index([beneficiaryId])
+  @@index([scheduledFor, status])
+  @@index([toAccountId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+model ScheduledTransfer {
+  id                    String            @id @default(uuid()) @db.Uuid
+  userId                String            @db.Uuid
+  fromAccountId         String            @db.Uuid
+  beneficiaryId         String            @db.Uuid
+  amount                Decimal           @db.Decimal(20, 2)
+  currency              String            @default("USD") @db.Char(3)
+  frequency             ScheduleFrequency @default(ONCE)
+  nextRunAt             DateTime
+  endAt                 DateTime?
+  note                  String?
+  active                Boolean           @default(true)
+  lastRunAt             DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  fromAccount           Account           @relation(fields: [fromAccountId], references: [id], onDelete: Restrict)
+  beneficiary           Beneficiary       @relation(fields: [beneficiaryId], references: [id], onDelete: Restrict)
+
+  @@index([active, nextRunAt])
+  @@index([userId])
+}
+
+model TransferEvent {
+  id                    String         @id @default(uuid()) @db.Uuid
+  transferId            String         @db.Uuid
+  fromStatus            TransferStatus?
+  toStatus              TransferStatus
+  reason                String?
+  actorUserId           String?        @db.Uuid
+  providerPayload       Json?
+  createdAt             DateTime       @default(now())
+  transfer              Transfer       @relation(fields: [transferId], references: [id], onDelete: Restrict)
+
+  @@index([transferId, createdAt])
+}
+
+model TransactionReceipt {
+  id                    String         @id @default(uuid()) @db.Uuid
+  transferId            String         @unique @db.Uuid
+  receiptNumber         String         @unique
+  fileObjectId          String?        @db.Uuid
+  generatedAt           DateTime       @default(now())
+  transfer              Transfer       @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  fileObject            FileObject?    @relation("ReceiptFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+}
+
+model MoneyMovement {
+  id                    String            @id @default(uuid()) @db.Uuid
+  idempotencyKey        String            @unique
+  userId                String            @db.Uuid
+  accountId             String            @db.Uuid
+  direction             MovementDirection
+  method                MovementMethod
+  amount                Decimal           @db.Decimal(20, 2)
+  feeAmount             Decimal           @default(0) @db.Decimal(20, 2)
+  currency              String            @default("USD") @db.Char(3)
+  status                TransferStatus    @default(CREATED)
+  providerReference     String?
+  failureReason         String?
+  processedAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  account               Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([accountId, status])
+}
+
+model LedgerEntry {
+  id                    String          @id @default(uuid()) @db.Uuid
+  transferId            String?         @db.Uuid
+  accountId             String          @db.Uuid
+  direction             LedgerDirection
+  amount                Decimal         @db.Decimal(20, 2)
+  currency              String          @default("USD") @db.Char(3)
+  balanceBefore         Decimal         @db.Decimal(20, 2)
+  balanceAfter          Decimal         @db.Decimal(20, 2)
+  referenceType         String          @default("TRANSFER")
+  referenceId           String
+  description           String?
+  createdAt             DateTime        @default(now())
+  transfer              Transfer?       @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  account               Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([accountId, referenceType, referenceId, direction])
+  @@index([accountId, createdAt(sort: Desc)])
+  @@index([transferId])
+}
+
+model Card {
+  id                    String      @id @default(uuid()) @db.Uuid
+  userId                String      @db.Uuid
+  accountId             String      @db.Uuid
+  type                  CardType
+  status                CardStatus  @default(CREATED)
+  providerReference     String      @unique
+  last4                 String      @db.Char(4)
+  network               String
+  expiryMonth           Int
+  expiryYear            Int
+  cardholderName        String
+  activatedAt           DateTime?
+  frozenAt              DateTime?
+  replacedById          String?     @db.Uuid
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  account               Account     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  controls              CardControl?
+  transactions          CardTransaction[]
+  events                CardEvent[]
+
+  @@index([userId, status])
+  @@index([accountId])
+}
+
+model CardControl {
+  id                    String    @id @default(uuid()) @db.Uuid
+  cardId                String    @unique @db.Uuid
+  onlineEnabled         Boolean   @default(true)
+  internationalEnabled  Boolean   @default(false)
+  contactlessEnabled    Boolean   @default(true)
+  atmEnabled            Boolean   @default(true)
+  perTransactionLimit   Decimal?  @db.Decimal(20, 2)
+  dailyLimit            Decimal?  @db.Decimal(20, 2)
+  monthlyLimit          Decimal?  @db.Decimal(20, 2)
+  updatedAt             DateTime  @updatedAt
+  card                  Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+}
+
+model CardTransaction {
+  id                    String            @id @default(uuid()) @db.Uuid
+  cardId                String            @db.Uuid
+  providerReference     String            @unique
+  status                TransactionStatus @default(PENDING)
+  amount                Decimal           @db.Decimal(20, 2)
+  currency              String            @db.Char(3)
+  merchantName          String
+  merchantCategory      String?
+  merchantCountry       String?           @db.Char(2)
+  authorizedAt          DateTime
+  postedAt              DateTime?
+  reversedAt            DateTime?
+  createdAt             DateTime          @default(now())
+  card                  Card              @relation(fields: [cardId], references: [id], onDelete: Restrict)
+
+  @@index([cardId, authorizedAt(sort: Desc)])
+  @@index([status])
+}
+
+model CardEvent {
+  id                    String      @id @default(uuid()) @db.Uuid
+  cardId                String      @db.Uuid
+  action                String
+  actorUserId           String?     @db.Uuid
+  metadata              Json?
+  createdAt             DateTime    @default(now())
+  card                  Card        @relation(fields: [cardId], references: [id], onDelete: Restrict)
+
+  @@index([cardId, createdAt(sort: Desc)])
+}
+
+model Notification {
+  id                    String             @id @default(uuid()) @db.Uuid
+  userId                String             @db.Uuid
+  channel               NotificationChannel
+  status                NotificationStatus @default(QUEUED)
+  templateKey           String
+  title                 String
+  body                  String
+  data                  Json?
+  sentAt                DateTime?
+  readAt                DateTime?
+  createdAt             DateTime           @default(now())
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+}
+
+model SupportTicket {
+  id                    String         @id @default(uuid()) @db.Uuid
+  customerId            String         @db.Uuid
+  assignedToId          String?        @db.Uuid
+  subject               String
+  status                TicketStatus   @default(OPEN)
+  priority              TicketPriority @default(NORMAL)
+  category              String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  resolvedAt            DateTime?
+  customer              User           @relation("TicketCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  assignedTo            User?          @relation("TicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages              SupportMessage[]
+
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([status, priority])
+}
+
+model SupportMessage {
+  id                    String        @id @default(uuid()) @db.Uuid
+  ticketId              String        @db.Uuid
+  authorUserId          String        @db.Uuid
+  body                  String
+  internalOnly          Boolean       @default(false)
+  createdAt             DateTime      @default(now())
+  ticket                SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author                User          @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+}
+
+model RiskAlert {
+  id                    String          @id @default(uuid()) @db.Uuid
+  customerId            String?         @db.Uuid
+  transferId            String?         @db.Uuid
+  assignedToId          String?         @db.Uuid
+  status                RiskAlertStatus @default(OPEN)
+  severity              RiskLevel
+  ruleKey               String
+  title                 String
+  description           String
+  score                 Int
+  metadata              Json?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  resolvedAt            DateTime?
+  customer              User?           @relation("AlertCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  assignedTo            User?           @relation("AlertAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  transfer              Transfer?       @relation(fields: [transferId], references: [id], onDelete: SetNull)
+
+  @@index([status, severity, createdAt(sort: Desc)])
+  @@index([customerId])
+  @@index([transferId])
+}
+
+model FeeSchedule {
+  id                    String       @id @default(uuid()) @db.Uuid
+  transferType          TransferType
+  currency              String       @db.Char(3)
+  fixedAmount           Decimal      @default(0) @db.Decimal(20, 2)
+  percentage            Decimal      @default(0) @db.Decimal(8, 5)
+  minimumFee            Decimal?     @db.Decimal(20, 2)
+  maximumFee            Decimal?     @db.Decimal(20, 2)
+  activeFrom            DateTime
+  activeTo              DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([transferType, currency, activeFrom])
+}
+
+model SystemConfig {
+  key                   String    @id
+  encryptedValue        String
+  description           String?
+  updatedById           String?   @db.Uuid
+  updatedAt             DateTime  @updatedAt
+}
+
+model AuditLog {
+  id                    String       @id @default(uuid()) @db.Uuid
+  sequence              BigInt       @unique @default(autoincrement())
+  actorUserId           String?      @db.Uuid
+  action                String
+  entityType            String
+  entityId              String?
+  outcome               AuditOutcome @default(SUCCESS)
+  requestId             String?
+  ipAddress             String?
+  userAgent             String?
+  metadata              Json?
+  previousHash          String?
+  hash                  String
+  createdAt             DateTime     @default(now())
+  actor                  User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model FileObject {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  objectKey             String    @unique
+  bucket                String
+  contentType           String
+  sizeBytes             Int?
+  checksum              String?
+  purpose               String
+  uploadedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  kycDocuments          KycDocument[]      @relation("KycDocumentFile")
+  statements            Statement[]        @relation("StatementFile")
+  receipts              TransactionReceipt[] @relation("ReceiptFile")
+
+  @@index([userId, purpose])
+}
