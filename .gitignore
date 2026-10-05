@@ -10,5 +10,5 @@ coverage/
 *.log
 .DS_Store
 .prisma/
-packages/database/src/generated/
+backend/src/generated/
 uploads/

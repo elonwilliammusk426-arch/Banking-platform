@@ -15,16 +15,47 @@ A production-minded full-stack banking starter built as a TypeScript monorepo. I
 
 ## Repository layout
 
+Three independently deployable tiers. Each application tier owns its
+`package.json`, lockfile, `tsconfig.json`, and `Dockerfile`, so it can be built
+on its own — this is what lets Railway deploy `frontend/` and `backend/` as
+separate services from this one repository.
+
 ```text
-apps/
-  web/                    Next.js customer application
-  api/                    NestJS API and domain modules
-packages/
-  database/               Prisma schema, migrations, generated client boundary
+frontend/                 Next.js 16 + React 19 + TypeScript + Tailwind 4
+  app/ components/ lib/   Routes, UI components, API client
+  Dockerfile              Standalone image (build context = frontend/)
+  railway.toml            Railway service config (Root Directory = frontend)
+
+backend/                  Node.js + NestJS 11 + TypeScript
+  src/                    Domain modules (auth, banking, ledger, cards, admin…)
+  src/prisma/             Generated Prisma client barrel + PG adapter
+  prisma/                 schema.prisma, migrations/, seed.ts
+  Dockerfile              Standalone image (build context = backend/)
+  railway.toml            Railway service config (Root Directory = backend)
+
+database/                 PostgreSQL tier
+  docker-compose.yml      Local Postgres container
+  README.md               Railway managed-Postgres runbook
+
 infrastructure/           Prometheus and deployment notes
-docker-compose.yml        PostgreSQL, Redis, MinIO, API, and web
-docker-compose.observability.yml
+docker-compose.yml        Full local stack (db + redis + minio + both tiers)
 ```
+
+### Tier boundaries
+
+| Boundary | Mechanism |
+| --- | --- |
+| Frontend → Backend | HTTP only. `next.config.ts` proxies `/api/*` to `API_INTERNAL_URL`; no shared code. |
+| Backend → Database | Prisma client, generated from `backend/prisma/schema.prisma`. |
+| Frontend → Database | **None.** The frontend has no DB driver and never receives `DATABASE_URL`. |
+
+Both boundaries are enforced in CI by the "Verify tier isolation" steps.
+
+> **Why the Prisma schema lives under `backend/`:** Railway builds the backend
+> with Root Directory `backend`, so only files under `backend/` exist in that
+> build context. A schema in a sibling folder would be missing at build time and
+> both `prisma generate` and `prisma migrate deploy` would fail. See
+> [database/README.md](database/README.md).
 
 ## Quick start
 
@@ -40,15 +71,18 @@ openssl rand -base64 32
 
 ```bash
 docker compose up -d postgres redis minio create-bucket
+# or just the database tier:
+docker compose -f database/docker-compose.yml up -d
 ```
 
 ### 3. Install, migrate, and seed
 
+Each tier installs separately — there is no root `node_modules`.
+
 ```bash
-npm install
-npm run db:generate
-npm run db:migrate
-npm run seed -w @haven/database
+npm run install:all      # == (cd backend && npm install) + (cd frontend && npm install)
+npm run db:migrate       # apply migrations  (runs in backend/)
+npm run db:seed          # load demo data    (runs in backend/)
 ```
 
 Demo account after seeding: `alex@haven.demo` / `ChangeMe!123456`. Change or remove it outside local development.
@@ -56,7 +90,9 @@ Demo account after seeding: `alex@haven.demo` / `ChangeMe!123456`. Change or rem
 ### 4. Run the platform
 
 ```bash
-npm run dev
+npm run dev              # both tiers together
+npm run dev:frontend     # or one at a time
+npm run dev:backend
 ```
 
 - Web: http://localhost:3000
@@ -105,11 +141,20 @@ Browser requests use `credentials: include`. Mutations send the readable `csrf_t
 
 ## Quality checks
 
+From the repository root (runs each tier in turn):
+
 ```bash
 npm run typecheck
+npm run lint
 npm test
 npm run build
-npm audit --omit=dev
+```
+
+Or per tier, which is what CI does — the two run as independent parallel jobs:
+
+```bash
+cd backend  && npm ci && npm run typecheck && npm test && npm run build
+cd frontend && npm ci && npm run typecheck && npm run lint && npm run build
 ```
 
 See [SECURITY.md](SECURITY.md) for controls and the production checklist. See [infrastructure/README.md](infrastructure/README.md) for Railway and AWS guidance.

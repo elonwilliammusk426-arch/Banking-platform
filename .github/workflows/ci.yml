@@ -20,36 +20,38 @@ env:
   NEXT_TELEMETRY_DISABLED: '1'
 
 jobs:
-  verify:
-    name: Verify (typecheck, lint, test, build)
+  # The two tiers are deployed independently on Railway (separate services with
+  # their own Root Directory), so they are verified independently here too.
+  # A matrix keeps the jobs parallel and the failure signal per-tier.
+  backend:
+    name: Backend (NestJS + Prisma)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # Node 22 matches apps/api/Dockerfile and apps/web/Dockerfile (node:22-alpine).
+      # Node 22 matches backend/Dockerfile (node:22-alpine).
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         id: install
         run: npm ci
 
-      # Each check below runs even if a previous one failed, so a single run
-      # reports every problem instead of stopping at the first.
-      # They are skipped only if the install step itself failed.
+      # Each check runs even if a previous one failed, so a single run reports
+      # every problem instead of stopping at the first.
       - name: Typecheck
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run typecheck
-
-      - name: Lint
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run lint
 
       - name: Test
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -58,3 +60,75 @@ jobs:
       - name: Build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
+
+      # `nest build` can exit 0 while emitting nothing (stale incremental
+      # buildinfo), so assert the entrypoint actually exists.
+      - name: Verify build output
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          test -f dist/main.js || { echo "::error::backend build produced no dist/main.js"; exit 1; }
+          echo "OK: dist/main.js emitted"
+
+      # Guards the tier separation: the backend must never import frontend code.
+      - name: Verify tier isolation
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          if grep -rn "\.\./\.\./frontend" src prisma 2>/dev/null; then
+            echo "::error::backend must not reach into frontend/"
+            exit 1
+          fi
+          echo "OK: backend has no frontend imports"
+
+  frontend:
+    name: Frontend (Next.js + Tailwind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Node 22 matches frontend/Dockerfile (node:22-alpine).
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        id: install
+        run: npm ci
+
+      - name: Typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck
+
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run lint
+
+      - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build
+
+      # frontend/Dockerfile ships the standalone bundle, so make sure
+      # next.config.ts actually produced one.
+      - name: Verify build output
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          test -f .next/standalone/server.js || { echo "::error::frontend build produced no standalone server.js"; exit 1; }
+          echo "OK: .next/standalone/server.js emitted"
+
+      # Guards the tier separation: the browser tier must never touch the DB.
+      - name: Verify tier isolation
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          if grep -rn "@prisma/client\|PrismaClient\|DATABASE_URL" app components lib 2>/dev/null; then
+            echo "::error::frontend must not access the database directly"
+            exit 1
+          fi
+          echo "OK: frontend has no database access"

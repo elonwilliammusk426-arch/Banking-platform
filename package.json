@@ -2,35 +2,31 @@
   "name": "haven-banking-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "Production-minded full-stack banking platform",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "description": "Production-minded full-stack banking platform — separated into frontend, backend and database tiers",
+  "//": "Intentionally NOT an npm workspace. Each tier owns its package.json and lockfile so Railway can build frontend/ and backend/ independently via Root Directory. These scripts are local-development convenience only.",
   "scripts": {
-    "dev": "concurrently -n WEB,API -c blue,green \"npm run dev -w @haven/web\" \"npm run dev -w @haven/api\"",
-    "dev:web": "npm run dev -w @haven/web",
-    "dev:api": "npm run dev -w @haven/api",
-    "build": "npm run db:generate && npm run build -w @haven/database && npm run build -w @haven/api && npm run build -w @haven/web",
-    "typecheck": "npm run db:generate && npm run build -w @haven/database && npm run typecheck -w @haven/api && npm run typecheck -w @haven/web",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm test -w @haven/api",
-    "db:generate": "npm run generate -w @haven/database",
-    "db:migrate": "npm run migrate -w @haven/database",
-    "db:studio": "npm run studio -w @haven/database",
-    "format": "prettier --write \"{apps,packages}/**/*.{ts,tsx,js,json,css,md}\""
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "typecheck": "cd backend && npm run typecheck && cd ../frontend && npm run typecheck",
+    "lint": "cd frontend && npm run lint",
+    "test": "cd backend && npm test",
+    "db:up": "docker compose -f database/docker-compose.yml up -d",
+    "db:down": "docker compose -f database/docker-compose.yml down",
+    "db:migrate": "cd backend && npm run migrate",
+    "db:seed": "cd backend && npm run seed",
+    "db:studio": "cd backend && npm run studio",
+    "format": "prettier --write \"{frontend,backend}/**/*.{ts,tsx,js,json,css,md}\""
   },
   "engines": {
     "node": ">=20.11"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "prettier": "^3.6.2",
-    "typescript": "^5.8.3"
-  },
-  "overrides": {
-    "postcss": "8.5.28",
-    "deepmerge-ts": "8.0.2",
-    "mysql2": "3.24.5"
+    "prettier": "^3.6.2"
   }
 }
