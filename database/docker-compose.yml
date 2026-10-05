@@ -1,0 +1,28 @@
+# Local PostgreSQL for development.
+#
+# In production this tier is a Railway managed PostgreSQL service — see
+# database/README.md. This compose file exists so the database tier can be
+# brought up on its own:
+#
+#   docker compose -f database/docker-compose.yml up -d
+#
+name: haven-database
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: haven
+      POSTGRES_PASSWORD: haven_dev_password
+      POSTGRES_DB: haven
+    ports: ['5432:5432']
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U haven -d haven']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:

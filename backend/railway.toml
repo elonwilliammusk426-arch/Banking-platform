@@ -1,0 +1,14 @@
+# Railway service: backend
+# Set this service's Root Directory to `backend` in the Railway dashboard.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Applies pending Prisma migrations, then starts the API.
+startCommand = "npm run release"
+healthcheckPath = "/api/v1/health/live"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
