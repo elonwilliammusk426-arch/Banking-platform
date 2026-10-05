@@ -1,0 +1,41 @@
+@config "../tailwind.config.ts";
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --font-dm-sans: "Avenir Next", Avenir, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-manrope: "Avenir Next", Avenir, Inter, ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { min-width: 320px; background: #f5f6f8; }
+body { margin: 0; min-height: 100vh; }
+button, input { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+::selection { background: #dbe1ff; color: #172033; }
+
+@layer components {
+  .eyebrow { @apply text-[11px] font-bold text-slate-700; }
+  .muted { @apply text-[10px] text-slate-400; }
+  .nav-item { @apply flex h-11 w-full items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium text-slate-400 transition hover:bg-white/[.05] hover:text-white; }
+  .nav-item-active { @apply bg-white/[.08] text-white shadow-[inset_3px_0_#7185ff]; }
+  .field { @apply h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition placeholder:text-slate-300 focus:border-cobalt focus:ring-4 focus:ring-cobalt/10; }
+}
+
+.chart-grid {
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 1px), #e8ebf0 25%);
+}
+.bank-card {
+  background: radial-gradient(circle at 90% 8%, #3d4c6b 0, transparent 34%), linear-gradient(145deg, #22314f, #111b2d 75%);
+}
+.bank-card::after {
+  content: ''; position: absolute; width: 190px; height: 190px; right: -85px; bottom: -125px;
+  border: 1px solid rgba(255,255,255,.08); border-radius: 999px;
+}
+.card-chip { background: linear-gradient(135deg, #cdb477, #f8e9b6); }
+.donut { background: conic-gradient(#5069ee 0 61%, #eef0f5 61% 100%); }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { scrollbar-width: none; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
+.modal-in { animation: modal-in .2s ease-out; }
+.toast-in { animation: toast-in .2s ease-out; }
