@@ -83,6 +83,8 @@ jobs:
             echo '```text' >> "$GITHUB_STEP_SUMMARY"
             tail -120 test-output.log >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
+            diagnostic="$(tail -120 test-output.log | base64 -w0)"
+            echo "::error title=Backend test output (base64)::$diagnostic"
             exit 1
           }
 
