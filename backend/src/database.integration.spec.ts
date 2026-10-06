@@ -35,10 +35,9 @@ describeWithDatabase('PostgreSQL integration and API end-to-end', () => {
     db = app.get(DatabaseService);
   });
 
-  afterAll(async () => {
-    await db.user.deleteMany({ where: { email: { in: [email, `rollback-${email}`] } } });
-    await app.close();
-  });
+  // CI uses an ephemeral PostgreSQL service. Do not delete the registered user:
+  // its audit record is intentionally append-only and the database forbids mutation.
+  afterAll(async () => app.close());
 
   it('registers a user through the real HTTP, service, Prisma, and PostgreSQL stack', async () => {
     const response = await request(app.getHttpServer()).post('/api/v1/auth/register').send({
