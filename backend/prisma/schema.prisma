@@ -256,6 +256,8 @@ model User {
   assignedRiskAlerts    RiskAlert[]    @relation("AlertAssignee")
   auditLogs             AuditLog[]
   files                 FileObject[]
+  preference            UserPreference?
+  securitySetting       SecuritySetting?
 
   @@index([status])
 }
@@ -359,6 +361,47 @@ model RecoveryCode {
   @@index([userId, usedAt])
 }
 
+model UserPreference {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @db.Uuid
+  language              String    @default("en")
+  timezone              String    @default("UTC")
+  dateFormat            String    @default("MM/DD/YYYY")
+  theme                  String    @default("SYSTEM")
+  emailNotifications    Boolean   @default(true)
+  pushNotifications     Boolean   @default(true)
+  smsNotifications      Boolean   @default(false)
+  marketingMessages     Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SecuritySetting {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @db.Uuid
+  loginAlerts           Boolean   @default(true)
+  transactionAlerts     Boolean   @default(true)
+  trustedDeviceAlerts   Boolean   @default(true)
+  sessionTimeoutMinutes Int       @default(30)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AccountSetting {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String    @unique @db.Uuid
+  nickname              String?
+  paperlessStatements   Boolean   @default(true)
+  transactionAlerts     Boolean   @default(true)
+  lowBalanceAlert       Boolean   @default(false)
+  lowBalanceThreshold   Decimal?  @db.Decimal(20, 2)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
 model KycProfile {
   id                    String      @id @default(uuid()) @db.Uuid
   userId                String      @unique @db.Uuid
@@ -422,6 +465,7 @@ model Account {
   cards                 Card[]
   scheduledTransfers    ScheduledTransfer[]
   moneyMovements        MoneyMovement[]
+  setting               AccountSetting?
 
   @@index([userId, status])
   @@index([currency])

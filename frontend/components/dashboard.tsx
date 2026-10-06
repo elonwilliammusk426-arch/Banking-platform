@@ -51,7 +51,7 @@ function Sidebar({ open, active, setActive, close }: { open: boolean; active: st
         <div className="relative mb-3 overflow-hidden rounded-2xl border border-slate-700 bg-[#18253b] p-4">
           <div className="mb-3 grid size-8 place-items-center rounded-lg bg-[#2c3a59] text-indigo-300"><HelpCircle size={19}/></div><strong className="text-xs">Need a hand?</strong><p className="my-1 text-[10px] text-slate-500">Our team is here 24/7.</p><button className="text-[10px] font-semibold text-indigo-300">Chat with us ↗</button>
         </div>
-        <button className="nav-item" onClick={() => setActive('Settings')}><Settings size={18}/>Settings</button>
+        <button className="nav-item" onClick={() => { window.location.href = '/settings'; }}><Settings size={18}/>Settings</button>
         <div className="mt-3 flex items-center gap-2.5 border-t border-slate-800 px-2 pt-4"><Avatar/><div className="min-w-0 flex-1"><strong className="block truncate text-[11px]">Alex Morgan</strong><span className="block truncate text-[9px] text-slate-500">alex@haven.co</span></div><MoreHorizontal size={17} className="text-slate-500"/></div>
       </div>
     </aside>

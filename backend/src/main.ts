@@ -30,7 +30,7 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.enableShutdownHooks();
 
-  await app.listen(config.get('PORT', 4000), '0.0.0.0');
+  await app.listen(config.get('PORT', 4000), '::');
 }
 
 void bootstrap();

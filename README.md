@@ -112,7 +112,7 @@ The included integration providers are explicit **sandbox adapters**. Connect re
 
 - Registration, email/phone verification, login, rotating sessions, TOTP MFA, recovery codes
 - Encrypted KYC profile and document onboarding with reviewer workflow
-- Customer profile, trusted-device/session visibility, notifications, and support chat streams
+- Customer profile, persisted user/security/account preferences, trusted-device and session management, notifications, and support chat streams
 
 ### Money movement
 
@@ -130,7 +130,7 @@ The included integration providers are explicit **sandbox adapters**. Connect re
 
 ## Important API groups
 
-- `/api/v1/auth`, `/api/v1/verification`, `/api/v1/customer`, `/api/v1/kyc`
+- `/api/v1/auth`, `/api/v1/verification`, `/api/v1/customer`, `/api/v1/settings`, `/api/v1/kyc`
 - `/api/v1/accounts`, `/api/v1/banking`, `/api/v1/payments`, `/api/v1/cards`
 - `/api/v1/notifications`, `/api/v1/support`, `/api/v1/storage`
 - `/api/v1/admin` (role protected)

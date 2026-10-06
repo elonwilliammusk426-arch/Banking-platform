@@ -28,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SupportModule } from './support/support.module';
 import { AdminModule } from './admin/admin.module';
 import { LedgerModule } from './ledger/ledger.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -43,7 +44,7 @@ import { LedgerModule } from './ledger/ledger.module';
     DatabaseModule, AuditModule, RedisModule, MonitoringModule, SecurityModule, IntegrationsModule, LedgerModule,
     AuthModule, VerificationModule, CustomerModule, KycModule, AccountsModule,
     BankingModule, PaymentsModule, CardsModule, NotificationsModule, SupportModule, AdminModule,
-    StorageModule, HealthModule,
+    SettingsModule, StorageModule, HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

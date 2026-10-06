@@ -13,7 +13,7 @@ async function main() {
   const passwordHash = await argon2.hash('ChangeMe!123456', { type: argon2.argon2id });
   const user = await prisma.user.upsert({
     where: { email: 'alex@haven.demo' },
-    update: { status: UserStatus.ACTIVE, emailVerifiedAt: new Date(), phoneVerifiedAt: new Date() },
+    update: { passwordHash, status: UserStatus.ACTIVE, emailVerifiedAt: new Date(), phoneVerifiedAt: new Date() },
     create: {
       email: 'alex@haven.demo', phone: '+14155550182', firstName: 'Alex', lastName: 'Morgan',
       passwordHash, status: UserStatus.ACTIVE, emailVerifiedAt: new Date(), phoneVerifiedAt: new Date(),
@@ -25,7 +25,7 @@ async function main() {
   await prisma.kycProfile.upsert({ where: { userId: user.id }, create: { userId: user.id, status: KycStatus.APPROVED, level: KycLevel.STANDARD, riskLevel: RiskLevel.LOW }, update: { status: KycStatus.APPROVED } });
 
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@haven.demo' }, update: {},
+    where: { email: 'admin@haven.demo' }, update: { passwordHash, status: UserStatus.ACTIVE },
     create: { email: 'admin@haven.demo', phone: '+14155550199', firstName: 'Operations', lastName: 'Admin', passwordHash, status: UserStatus.ACTIVE, emailVerifiedAt: new Date(), phoneVerifiedAt: new Date(), roles: { create: [{ role: Role.CUSTOMER }, { role: Role.SUPER_ADMIN }] }, kycProfile: { create: { status: KycStatus.APPROVED, level: KycLevel.ENHANCED } } },
   });
   await prisma.userRole.upsert({ where: { userId_role: { userId: admin.id, role: Role.SUPER_ADMIN } }, create: { userId: admin.id, role: Role.SUPER_ADMIN }, update: {} });
