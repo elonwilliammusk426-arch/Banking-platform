@@ -76,7 +76,15 @@ jobs:
 
       - name: Test (unit, API, integration, and end-to-end)
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.log || {
+            echo '### Backend test failure' >> "$GITHUB_STEP_SUMMARY"
+            echo '```text' >> "$GITHUB_STEP_SUMMARY"
+            tail -120 test-output.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
 
       - name: Build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
