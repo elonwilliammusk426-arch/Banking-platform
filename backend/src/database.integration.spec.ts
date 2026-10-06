@@ -1,8 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
-import { AppModule } from './app.module';
+import { AuditService } from './audit/audit.service';
+import { AuthController } from './auth/auth.controller';
+import { AuthService } from './auth/auth.service';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { DatabaseService } from './database.service';
 import { UserStatus } from './prisma';
 
@@ -17,7 +22,11 @@ describeWithDatabase('PostgreSQL integration and API end-to-end', () => {
   const phone = `+1555${String(Date.now()).slice(-7)}`;
 
   beforeAll(async () => {
-    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const module = await Test.createTestingModule({
+      imports: [ConfigModule.forRoot({ isGlobal: true }), JwtModule.register({})],
+      controllers: [AuthController],
+      providers: [DatabaseService, AuditService, AuthService, JwtAuthGuard],
+    }).compile();
     app = module.createNestApplication();
     app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
