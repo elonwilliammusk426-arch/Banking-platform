@@ -157,6 +157,15 @@ cd backend  && npm ci && npm run typecheck && npm test && npm run build
 cd frontend && npm ci && npm run typecheck && npm run lint && npm run build
 ```
 
+The backend suite covers customer settings, admin operations, API validation, authentication, authorization, CSRF protection, ledger derivation, idempotency, serializable money-movement transactions, optimistic-concurrency failures, and provider-failure reversals. CI provisions an isolated PostgreSQL 16 service, applies every migration, then runs the real HTTP → NestJS → Prisma → PostgreSQL end-to-end and rollback tests.
+
+```bash
+cd backend
+npm run test:unit         # fast mocked unit/security/transaction tests
+npm run test:integration  # HTTP contract + PostgreSQL tests (set TEST_DATABASE_URL)
+npm run test:coverage     # complete suite with coverage report
+```
+
 See [SECURITY.md](SECURITY.md) for controls and the production checklist. See [infrastructure/README.md](infrastructure/README.md) for Railway and AWS guidance.
 
 > This project is a technical foundation, not a certified core-banking system. Real-money deployment requires regulatory review, threat modeling, penetration testing, operational controls, and jurisdiction-specific compliance.

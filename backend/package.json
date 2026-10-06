@@ -2,7 +2,7 @@
   "name": "haven-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "Haven banking platform backend \u2014 NestJS + TypeScript + Prisma/PostgreSQL",
+  "description": "Haven banking platform backend — NestJS + TypeScript + Prisma/PostgreSQL",
   "scripts": {
     "generate": "node scripts/generate.mjs",
     "dev": "npm run generate && nest start --watch",
@@ -12,6 +12,9 @@
     "release": "prisma migrate deploy && node dist/main.js",
     "typecheck": "npm run generate && tsc --noEmit -p tsconfig.json",
     "test": "npm run generate && jest --runInBand",
+    "test:unit": "npm run generate && jest --runInBand --testPathIgnorePatterns='(database.integration|settings.e2e).spec.ts'",
+    "test:integration": "npm run generate && jest --runInBand --runTestsByPath src/settings/settings.e2e.spec.ts src/database.integration.spec.ts",
+    "test:coverage": "npm run generate && jest --runInBand --coverage",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
@@ -58,7 +61,9 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.18.3",
     "@types/pg": "^8.15.5",
+    "@types/supertest": "^7.2.1",
     "jest": "^30.1.3",
+    "supertest": "^7.3.1",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
